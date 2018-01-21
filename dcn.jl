@@ -105,6 +105,9 @@ g_sKdr = 125 ;		# S/m^2
 m_sKdr = gate_t( -50.0, -9.1 ) ;
 t_m_sKdr = tau_coeff_t( 14.95, -50.0, 21.74, -50.0, 13.91, 0.05 ) ;
 
+#-------------------------
+# Solving the ODE system 
+#-------------------------
 
 using DifferentialEquations 
 using ODEInterface 	
@@ -114,20 +117,23 @@ Cm = 0.0156 ;		# F/m^2
 I = 100.0 ;			# pA
 pf = ParameterizedFunction(dcn_dyn, I) ;
 
-V0 = -50.0 ;		# mV
+V0 = -90.0 ;		# mV
 u0 = [V0 ; m_Naf(V0) ; h_Naf(V0) ; m_Nap(V0) ; h_Nap(V0) ; m_h(V0) ; m_fKdr(V0) ; m_sKdr(V0)] ;
 tspan = (0.0, 1.0) ;
 
 prob = ODEProblem(pf, u0, tspan) ;
 
-sol = solve(prob, alg=:radau );
+sol = solve(prob, alg=:radau, reltol=1e-10, abstol=1e-10);
 
-plotlyjs()
-plt = plot(sol, vars = (0,1), show=true) 
+plotlyjs(size = (700,500))
+
+plt = plot(sol, vars = (0,1), legend = false)
+title!("Soma voltage response with I = $I pA and V0 = $V0 mV")
+xlabel!("t [s]")
+ylabel!("V [mV]")
 
 #gui(plt)
-
-#gui()
 #display(plt)
-savefig(plt,"voltage_exc.png")
+
+savefig(plt,"voltage.png")
  		
