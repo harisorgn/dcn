@@ -111,7 +111,7 @@ using ODEInterface
 using Plots
 
 Cm = 0.0156 ;		# F/m^2
-I = 0.0 ;			# pA
+I = 100.0 ;			# pA
 pf = ParameterizedFunction(dcn_dyn, I) ;
 
 V0 = -50.0 ;		# mV
@@ -129,5 +129,5 @@ plt = plot(sol, vars = (0,1), show=true)
 
 #gui()
 #display(plt)
-savefig(plt,"voltage.png")
+savefig(plt,"voltage_exc.png")
  		
