@@ -70,7 +70,7 @@ function t_z_Sk(Ca::Float64)
 
 end
 
-function dcn_dyn(t, u, p, du)
+function dcn_dyn_wCa(t, u, p, du)
 
 	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) - 
 					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) -
@@ -97,12 +97,31 @@ function dcn_dyn(t, u, p, du)
 	du[13] = B_Ca * p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - u0[13] * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) - (u[13] - Ca_base) / t_Ca ;
 
-	println(u)
-	println(du)
-	#println(p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - Ca0 * exp(-z_CaHVA * F * u[1] / (R * Temp))))
-	#println(exp(-z_CaHVA * F * u[1] / (R * Temp)))
-	#println(-z_CaHVA * F * u[1])
-	#println((R * Temp))
+	#println(u)
+	#println(du)
+	
+end
+
+function dcn_dyn(t, u, p, du)
+
+	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) - 
+					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) -
+					g_TNC * (u[1] - E_TNC) -
+					g_h * u[6]^2 * (u[1] - E_h) - 
+					g_fKdr * u[7]^4 * (u[1] - E_K) - 
+					g_sKdr * u[8]^4 * (u[1] - E_K)) / Cm ;
+
+	du[2] = (m_Naf(u[1]) - u[2]) / t_m_Naf(u[1]) ;
+	du[3] = (h_Naf(u[1]) - u[3]) / t_h_Naf(u[1]) ;
+	du[4] = (m_Nap(u[1]) - u[4]) / t_m_Nap ;
+	du[5] = (h_Nap(u[1]) - u[5]) / t_h_Nap(u[1]) ;
+	du[6] = (m_h(u[1]) - u[6]) / t_m_h ;
+	du[7] = (m_fKdr(u[1]) - u[7]) / t_m_fKdr(u[1]) ;
+	du[8] = (m_sKdr(u[1]) - u[8]) / t_m_sKdr(u[1]) ;
+	
+	#println(u)
+	#println(du)
+	
 end
 
 # Fast sodium current
@@ -205,7 +224,17 @@ pf = ParameterizedFunction(dcn_dyn, I) ;
 
 V0 = -60.0e-3 ;		# V
 Ca0 = 2.0e-3 ;		# M
+
 u0 = [V0 ; 
+	m_Naf(V0) ; 
+	h_Naf(V0) ; 
+	m_Nap(V0) ; 
+	h_Nap(V0) ; 
+	m_h(V0) ; 
+	m_fKdr(V0) ; 
+	m_sKdr(V0)] ;
+
+u0_wCA = [V0 ; 
 	m_Naf(V0) ; 
 	h_Naf(V0) ; 
 	m_Nap(V0) ; 
