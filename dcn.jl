@@ -63,9 +63,11 @@ end
 function t_z_Sk(Ca::Float64)
 
 	if Ca < 0.005e-3	# M
-		return 60.0e-3 - 11.2e3 * Ca 
+		return 60.0e-3 - 11.2e3 * Ca
+		#return 0.001 - 0.1867e3 * Ca  
 	else
 		return 4.0e-3
+		#return 6.667e-5
 	end
 
 end
@@ -78,12 +80,12 @@ function dcn_dyn_wCa(t, u, p, du)
 					g_h * u[6]^2 * (u[1] - E_h) - 
 					g_fKdr * u[7]^4 * (u[1] - E_K) - 
 					g_sKdr * u[8]^4 * (u[1] - E_K) -
-					p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - u0[13] * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+					p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) -
 					g_CaLVA * u[10]^2 * u[11] * (u[1] - E_Ca) - 
 					g_Sk * u[12] * (u[1] - E_K)) / Cm ;
 
-	du[2] = (m_Naf(u[1]) - u[2]) / t_m_Naf(u[1]) ;
+	du[2] = (m_Naf(u[1]) - u[2]) / (t_m_Naf(u[1]) / QdT) ;
 	du[3] = (h_Naf(u[1]) - u[3]) / t_h_Naf(u[1]) ;
 	du[4] = (m_Nap(u[1]) - u[4]) / t_m_Nap ;
 	du[5] = (h_Nap(u[1]) - u[5]) / t_h_Nap(u[1]) ;
@@ -94,12 +96,20 @@ function dcn_dyn_wCa(t, u, p, du)
 	du[10] = (m_CaLVA(u[1]) - u[10]) / t_m_CaLVA(u[1]) ;
 	du[11] = (h_CaLVA(u[1]) - u[11]) / t_h_CaLVA(u[1]) ;
 	du[12] = (z_Sk(u[13]) - u[12]) / t_z_Sk(u[13]) ;
-	du[13] = B_Ca * p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - u0[13] * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+	du[13] = B_Ca * p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) - (u[13] - Ca_base) / t_Ca ;
 
-	#println(u)
-	#println(du)
-	
+	#println(m_Naf(u[1]), " ", u[2], " ", t_m_Naf(u[1]), " ", du[2])
+	println(u)
+	#println(m_CaHVA(u[1]), " ", u[9], " ", u[1])
+	println("------------------------")
+
+	I_CaHVA = p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) ;
+
+	#println(I_CaHVA, " ", u[13])
+	#println(Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp)))
+	#println(u[1])
 end
 
 function dcn_dyn(t, u, p, du)
@@ -171,7 +181,7 @@ t_m_fKdr = tau_t( 13.9e-3, -40.0e-3, 12.0e-3, -40.0e-3, -13.0e-3, 0.1e-3 ) ;
 g_sKdr = 125.0 ;	# S/m^2
 
 m_sKdr = gate_t( -50.0e-3, -9.1e-3 ) ;
-t_m_sKdr = tau_t( 14.95e-3, -50.0e-3, 21.74e-3, -50.0e-3, 13.91e-3, 0.05e-3 ) ;
+t_m_sKdr = tau_t( 14.95e-3, -50.0e-3, 21.74e-3, -50.0e-3, -13.91e-3, 0.05e-3 ) ;
 
 # High voltage activated calcium current CaHVA
 
@@ -205,10 +215,16 @@ k_Ca = 3.45e-7 ;	# mol/C
 
 radius_soma = 50.0e-6 ;	# m
 thick_soma = 200.0e-9 ;	# m
-B_Ca = k_Ca / (4.0 * pi * thick_soma * radius_soma^2) ;
+vol_soma = pi / 3.0 * (3.0 * radius_soma * radius_soma * thick_soma - 
+					   6.0 * radius_soma * thick_soma * thick_soma + 
+					   4.0 * thick_soma * thick_soma * thick_soma) ;
+
+B_Ca = k_Ca / vol_soma ;
 
 t_Ca = 70.0e-3 ; 		# s 
 
+Q10 = 3.0 ;
+QdT = Q10 ^ ((22.0 - 32.0)/10.0) ;
 
 #-------------------------
 # Solving the ODE system 
@@ -220,10 +236,12 @@ using Plots
 
 Cm = 0.0156 ;		# F/m^2
 I =  100.0e-12 ;	# A 
-pf = ParameterizedFunction(dcn_dyn, I) ;
+pf = ParameterizedFunction(dcn_dyn_wCa, I) ;
 
-V0 = -60.0e-3 ;		# V
-Ca0 = 2.0e-3 ;		# M
+Ca_in = 50.0e-9 ;	# M
+Ca_out = 2.0e-3 ;	# M
+V0 = -90.0e-3 ;		# V
+Ca0 = 50.0e-9 ;		# M
 
 u0 = [V0 ; 
 	m_Naf(V0) ; 
@@ -234,7 +252,7 @@ u0 = [V0 ;
 	m_fKdr(V0) ; 
 	m_sKdr(V0)] ;
 
-u0_wCA = [V0 ; 
+u0_wCa = [V0 ; 
 	m_Naf(V0) ; 
 	h_Naf(V0) ; 
 	m_Nap(V0) ; 
@@ -250,9 +268,9 @@ u0_wCA = [V0 ;
 
 tspan = (0.0, 1.0) ;
 
-prob = ODEProblem(pf, u0, tspan) ;
+prob = ODEProblem(pf, u0_wCa, tspan) ;
 
-sol = solve(prob, alg=:radau, reltol=1e-8, abstol=1e-8);
+sol = solve(prob, alg=:radau, reltol=1e-8, abstol=1e-8, maxstep = 1e-8, minstep = 1e-9);
 
 plotlyjs(size = (700,500))
 
