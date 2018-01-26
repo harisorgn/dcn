@@ -85,7 +85,7 @@ function dcn_dyn_wCa(t, u, p, du)
 					g_CaLVA * u[10]^2 * u[11] * (u[1] - E_Ca) - 
 					g_Sk * u[12] * (u[1] - E_K)) / Cm ;
 
-	du[2] = (m_Naf(u[1]) - u[2]) / (t_m_Naf(u[1]) / QdT) ;
+	du[2] = (m_Naf(u[1]) - u[2]) / t_m_Naf(u[1]) ;
 	du[3] = (h_Naf(u[1]) - u[3]) / t_h_Naf(u[1]) ;
 	du[4] = (m_Nap(u[1]) - u[4]) / t_m_Nap ;
 	du[5] = (h_Nap(u[1]) - u[5]) / t_h_Nap(u[1]) ;
