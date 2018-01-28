@@ -1,23 +1,23 @@
 
 struct gate_t
-	Vh::Float64		# mV
-	k::Float64		# mV
+	Vh::Float64		# V
+	k::Float64		# V
 end
 
 struct tau_t
-	A::Float64		# ms
-	B::Float64		# mV
-	C::Float64		# mV
-	D::Float64		# mV
-	E::Float64		# mV
-	F::Float64		# ms
+	A::Float64		# s
+	B::Float64		# V
+	C::Float64		# V
+	D::Float64		# V
+	E::Float64		# V
+	F::Float64		# s
 end
 
 struct tau_h_Nap_t
-	A::Float64		# ms
-	D::Float64		# mV
-	E::Float64		# mV
-	F::Float64		# ms
+	A::Float64		# s
+	D::Float64		# V
+	E::Float64		# V
+	F::Float64		# s
 end
 
 function (x::gate_t)(V::Float64)
@@ -74,16 +74,16 @@ end
 
 function dcn_dyn_wCa(t, u, p, du)
 
-	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) - 
-					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) -
-					g_TNC * (u[1] - E_TNC) -
-					g_h * u[6]^2 * (u[1] - E_h) - 
-					g_fKdr * u[7]^4 * (u[1] - E_K) - 
-					g_sKdr * u[8]^4 * (u[1] - E_K) -
+	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) * area_soma - 
+					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) * area_soma -
+					g_TNC * (u[1] - E_TNC) * area_soma -
+					g_h * u[6]^2 * (u[1] - E_h) * area_soma - 
+					g_fKdr * u[7]^4 * (u[1] - E_K) * area_soma - 
+					g_sKdr * u[8]^4 * (u[1] - E_K) * area_soma -
 					p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
-						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) -
-					g_CaLVA * u[10]^2 * u[11] * (u[1] - E_Ca) - 
-					g_Sk * u[12] * (u[1] - E_K)) / Cm ;
+						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * area_soma -
+					g_CaLVA * u[10]^2 * u[11] * (u[1] - E_Ca) * area_soma - 
+					g_Sk * u[12] * (u[1] - E_K) * area_soma) / (Cm * area_soma);
 
 	du[2] = (m_Naf(u[1]) - u[2]) / t_m_Naf(u[1]) ;
 	du[3] = (h_Naf(u[1]) - u[3]) / t_h_Naf(u[1]) ;
@@ -97,29 +97,18 @@ function dcn_dyn_wCa(t, u, p, du)
 	du[11] = (h_CaLVA(u[1]) - u[11]) / t_h_CaLVA(u[1]) ;
 	du[12] = (z_Sk(u[13]) - u[12]) / t_z_Sk(u[13]) ;
 	du[13] = B_Ca * p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
-			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) - (u[13] - Ca_base) / t_Ca ;
+			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * area_soma - (u[13] - Ca_base) / t_Ca ;
 
-	#println(m_Naf(u[1]), " ", u[2], " ", t_m_Naf(u[1]), " ", du[2])
-	println(u)
-	#println(m_CaHVA(u[1]), " ", u[9], " ", u[1])
-	println("------------------------")
-
-	I_CaHVA = p_CaHVA * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
-						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) ;
-
-	#println(I_CaHVA, " ", u[13])
-	#println(Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp)))
-	#println(u[1])
 end
 
 function dcn_dyn(t, u, p, du)
 
-	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) - 
-					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) -
-					g_TNC * (u[1] - E_TNC) -
-					g_h * u[6]^2 * (u[1] - E_h) - 
-					g_fKdr * u[7]^4 * (u[1] - E_K) - 
-					g_sKdr * u[8]^4 * (u[1] - E_K)) / Cm ;
+	du[1] = (p - g_Naf * u[2]^3 * u[3] * (u[1] - E_Na) * area_soma - 
+					g_Nap * u[4]^3 * u[5] * (u[1] - E_Na) * area_soma -
+					g_TNC * (u[1] - E_TNC) * area_soma -
+					g_h * u[6]^2 * (u[1] - E_h) * area_soma - 
+					g_fKdr * u[7]^4 * (u[1] - E_K) * area_soma - 
+					g_sKdr * u[8]^4 * (u[1] - E_K) * area_soma) / (Cm * area_soma) ;
 
 	du[2] = (m_Naf(u[1]) - u[2]) / t_m_Naf(u[1]) ;
 	du[3] = (h_Naf(u[1]) - u[3]) / t_h_Naf(u[1]) ;
@@ -128,9 +117,6 @@ function dcn_dyn(t, u, p, du)
 	du[6] = (m_h(u[1]) - u[6]) / t_m_h ;
 	du[7] = (m_fKdr(u[1]) - u[7]) / t_m_fKdr(u[1]) ;
 	du[8] = (m_sKdr(u[1]) - u[8]) / t_m_sKdr(u[1]) ;
-	
-	#println(u)
-	#println(du)
 	
 end
 
@@ -148,6 +134,7 @@ t_h_Naf = tau_t( 16.67e-3, 8.3e-3, -29.0e-3, -66e-3, 9.0e-3, 0.2e-3 ) ;
 # Persistent sodium current
 
 g_Nap = 8.0 ;		# S/m^2
+#g_Nap = 0.0 ;
 
 m_Nap = gate_t( -70.0e-3, -4.1e-3 ) ;
 t_m_Nap = 50.0e-3 ;	# s
@@ -163,6 +150,8 @@ E_TNC = -35.0e-3 ;	# V
 # Hyperpolarisation-activated cyclic nucleotide current
 
 g_h = 2.0	;		# S/m^2
+#g_h = 1.0 ;
+
 E_h = -45.0e-3 ;	# V
 
 m_h = gate_t( -80.0e-3, 5.0e-3 ) ;
@@ -193,10 +182,14 @@ z_CaHVA = 2.0 ;			# valence of Ca
 R = 8.3145 ;			# J/(K*mol) , gas constant
 F = 96480.0 ;			# C/mol , Faraday constant
 Temp = 32.0 + 273.15 ;	# K
+Ca_in = 50.0e-9 ;		# M
+Ca_out = 2.0e-3 ;		# M
 
 # Low voltage activated calcium current CaLVA / CaT
 
-g_CaLVA = 1.5 ;		# S/m^2 
+g_CaLVA = 1.5 ;		# S/m^2
+#g_CaLVA = 0.0 ;
+
 E_Ca = 139.0e-3 ;	# V
 
 m_CaLVA = gate_t( -56.0e-3, -6.2e-3 ) ;
@@ -212,9 +205,11 @@ g_Sk = 2.2 ;		# S/m^2
 
 Ca_base = 50e-9 ;	# M
 k_Ca = 3.45e-7 ;	# mol/C
+#k_Ca = 5.2e-6 ;
 
 radius_soma = 50.0e-6 ;	# m
 thick_soma = 200.0e-9 ;	# m
+area_soma = radius_soma * radius_soma * pi ;
 vol_soma = pi / 3.0 * (3.0 * radius_soma * radius_soma * thick_soma - 
 					   6.0 * radius_soma * thick_soma * thick_soma + 
 					   4.0 * thick_soma * thick_soma * thick_soma) ;
@@ -222,9 +217,6 @@ vol_soma = pi / 3.0 * (3.0 * radius_soma * radius_soma * thick_soma -
 B_Ca = k_Ca / vol_soma ;
 
 t_Ca = 70.0e-3 ; 		# s 
-
-Q10 = 3.0 ;
-QdT = Q10 ^ ((22.0 - 32.0)/10.0) ;
 
 #-------------------------
 # Solving the ODE system 
@@ -238,10 +230,8 @@ Cm = 0.0156 ;		# F/m^2
 I =  100.0e-12 ;	# A 
 pf = ParameterizedFunction(dcn_dyn_wCa, I) ;
 
-Ca_in = 50.0e-9 ;	# M
-Ca_out = 2.0e-3 ;	# M
-V0 = -90.0e-3 ;		# V
-Ca0 = 50.0e-9 ;		# M
+V0 = -80.0e-3 ;		# V
+Ca0 = Ca_in ;		# M
 
 u0 = [V0 ; 
 	m_Naf(V0) ; 
@@ -266,18 +256,19 @@ u0_wCa = [V0 ;
 	z_Sk(Ca0) ;
 	Ca0 ] ;
 
-tspan = (0.0, 1.0) ;
+tspan = (0.0, 0.4) ;
 
 prob = ODEProblem(pf, u0_wCa, tspan) ;
 
-sol = solve(prob, alg=:radau, reltol=1e-8, abstol=1e-8, maxstep = 1e-8, minstep = 1e-9);
+sol = solve(prob, alg=:radau, dt = 1.0e-6, reltol=1e-8, abstol=1e-8);
 
 plotlyjs(size = (700,500))
 
 plt = plot(sol, vars = (0,1), legend = false)
-title!("Soma voltage response with I = $I pA and V0 = $V0 mV")
+title!("Soma voltage response with I = $(I*1e12) pA and V0 = $(V0*1e3) mV")
 xlabel!("t [s]")
 ylabel!("V [V]")
+#ylims!((-0.09, 0.02))
 
 #gui(plt)
 #display(plt)
