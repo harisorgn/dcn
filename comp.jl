@@ -1,6 +1,4 @@
 
-#include("constants.jl")
-
 abstract type abstract_comp end
 
 struct soma_t <: abstract_comp
@@ -44,7 +42,7 @@ struct dist_dend_t <: abstract_comp
 end
 
 
-function compartment_initialise(comp_sym::Array{Symbol}, diam_v::Array{Float64}, len_v::Array{Float64}, C::Array{Int64})
+function initialise_compartments(comp_sym::Array{Symbol}, diam_v::Array{Float64}, len_v::Array{Float64}, C::Array{Int64})
 
 	comp_v = Array{abstract_comp}(length(comp_sym)) ;
 
@@ -155,18 +153,18 @@ function compartment_initialise(comp_sym::Array{Symbol}, diam_v::Array{Float64},
 end
 
 
-function compartment_dynamics(comp::soma_t, u::Array{Float64}, V_connect::Array{Float64})
+function compartment_dynamics(comp::soma_t, u::Array{Float64}, V_connect::Array{Float64}, Ie::Float64)
 
 	du = Array{Float64}(n_eq_s) ;
 	V_rep_v = repmat([u[1]], length(V_connect))
 
-	du[1] = (I - g_Naf_s * u[2]^3 * u[3] * (u[1] - E_Na) * comp.area - 
+	du[1] = (Ie - g_Naf_s * u[2]^3 * u[3] * (u[1] - E_Na) * comp.area - 
 				 g_Nap_s * u[4]^3 * u[5] * (u[1] - E_Na) * comp.area -
 				 g_TNC_s * (u[1] - E_TNC) * comp.area -
 				 g_h_s * u[6]^2 * (u[1] - E_h) * comp.area - 
 				 g_fKdr_s * u[7]^4 * (u[1] - E_K) * comp.area - 
 				 g_sKdr_s * u[8]^4 * (u[1] - E_K) * comp.area -
-				 p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+				 p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area -
 				 g_CaLVA_s * u[10]^2 * u[11] * (u[1] - E_Ca) * comp.area - 
 				 g_Sk_s * u[12] * (u[1] - E_K) * comp.area -
@@ -184,14 +182,14 @@ function compartment_dynamics(comp::soma_t, u::Array{Float64}, V_connect::Array{
 	du[10] = (m_CaLVA(u[1]) - u[10]) / t_m_CaLVA(u[1]) ;
 	du[11] = (h_CaLVA(u[1]) - u[11]) / t_h_CaLVA(u[1]) ;
 	du[12] = (z_Sk(u[13]) - u[12]) / t_z_Sk(u[13]) ;
-	du[13] = (k_Ca_s / comp.Ca_vol) * p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
-			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area - (u[13] - Ca_base) / t_Ca ;
+	du[13] = (k_Ca_s / comp.Ca_vol) * p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area  - (u[13] - Ca_base) / t_Ca ;
 
 	return du
 
 end
 
-function compartment_dynamics(comp::axon_hill_t, u::Array{Float64}, V_connect::Array{Float64})
+function compartment_dynamics(comp::axon_hill_t, u::Array{Float64}, V_connect::Array{Float64}, Ie::Float64)
 
 	du = Array{Float64}(n_eq_ax) ;
 	V_rep_v = repmat([u[1]], length(V_connect))
@@ -212,7 +210,7 @@ function compartment_dynamics(comp::axon_hill_t, u::Array{Float64}, V_connect::A
 
 end
 
-function compartment_dynamics(comp::axon_is_t, u::Array{Float64}, V_connect::Array{Float64})
+function compartment_dynamics(comp::axon_is_t, u::Array{Float64}, V_connect::Array{Float64}, Ie::Float64)
 
 	du = Array{Float64}(n_eq_ax) ;
 	V_rep_v = repmat([u[1]], length(V_connect))
@@ -233,7 +231,7 @@ function compartment_dynamics(comp::axon_is_t, u::Array{Float64}, V_connect::Arr
 
 end
 
-function compartment_dynamics(comp::prox_dend_t, u::Array{Float64}, V_connect::Array{Float64})
+function compartment_dynamics(comp::prox_dend_t, u::Array{Float64}, V_connect::Array{Float64}, Ie::Float64)
 
 	du = Array{Float64}(n_eq_pd) ;
 	V_rep_v = repmat([u[1]], length(V_connect))
@@ -243,7 +241,7 @@ function compartment_dynamics(comp::prox_dend_t, u::Array{Float64}, V_connect::A
 				 g_h_pd * u[4]^2 * (u[1] - E_h) * comp.area - 
 				 g_fKdr_pd * u[5]^4 * (u[1] - E_K) * comp.area - 
 				 g_sKdr_pd * u[6]^4 * (u[1] - E_K) * comp.area -
-				 p_CaHVA_pd * u[7]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+				 p_CaHVA_pd * u[7]^3 * z_CaHVA^2 * F^2 * u[1] * (u[11] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area -
 				 g_CaLVA_pd * u[8]^2 * u[9] * (u[1] - E_Ca) * comp.area - 
 				 g_Sk_pd * u[10] * (u[1] - E_K) * comp.area -
@@ -259,20 +257,20 @@ function compartment_dynamics(comp::prox_dend_t, u::Array{Float64}, V_connect::A
 	du[8] = (m_CaLVA(u[1]) - u[8]) / t_m_CaLVA(u[1]) ;
 	du[9] = (h_CaLVA(u[1]) - u[9]) / t_h_CaLVA(u[1]) ;
 	du[10] = (z_Sk(u[11]) - u[10]) / t_z_Sk(u[11]) ;
-	du[11] = (k_Ca_d / comp.Ca_vol) * p_CaHVA_s * u[7]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+	du[11] = (k_Ca_d / comp.Ca_vol) * p_CaHVA_s * u[7]^3 * z_CaHVA^2 * F^2 * u[1] * (u[11] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area - (u[11] - Ca_base) / t_Ca ;
 
 	return du
 
 end
 
-function compartment_dynamics(comp::dist_dend_t, u::Array{Float64}, V_connect::Array{Float64})
+function compartment_dynamics(comp::dist_dend_t, u::Array{Float64}, V_connect::Array{Float64}, Ie::Float64)
 
 	du = Array{Float64}(n_eq_dd) ;
 	V_rep_v = repmat([u[1]], length(V_connect))
 
 	du[1] = (  - g_h_dd * u[2]^2 * (u[1] - E_h) * comp.area - 
-				 p_CaHVA_dd * u[3]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+				 p_CaHVA_dd * u[3]^3 * z_CaHVA^2 * F^2 * u[1] * (u[7] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 						(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area -
 				 g_CaLVA_dd * u[4]^2 * u[5] * (u[1] - E_Ca) * comp.area - 
 				 g_Sk_dd * u[6] * (u[1] - E_K) * comp.area -
@@ -284,9 +282,29 @@ function compartment_dynamics(comp::dist_dend_t, u::Array{Float64}, V_connect::A
 	du[4] = (m_CaLVA(u[1]) - u[4]) / t_m_CaLVA(u[1]) ;
 	du[5] = (h_CaLVA(u[1]) - u[5]) / t_h_CaLVA(u[1]) ;
 	du[6] = (z_Sk(u[7]) - u[6]) / t_z_Sk(u[7]) ;
-	du[7] = (k_Ca_d / comp.Ca_vol) * p_CaHVA_s * u[3]^3 * z_CaHVA^2 * F^2 * u[1] * (Ca_in - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+	du[7] = (k_Ca_d / comp.Ca_vol) * p_CaHVA_s * u[3]^3 * z_CaHVA^2 * F^2 * u[1] * (u[7] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
 			(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area - (u[7] - Ca_base) / t_Ca ;
 
 	return du
 
+end
+
+function compartment_currents(comp::soma_t, u::Array{Float64}, V_connect::Array{Float64})
+
+	V_rep_v = repmat([u[1]], length(V_connect))
+
+	current_v = [ g_Naf_s * u[2]^3 * u[3] * (u[1] - E_Na) * comp.area,  
+					g_Nap_s * u[4]^3 * u[5] * (u[1] - E_Na) * comp.area,
+					g_TNC_s * (u[1] - E_TNC) * comp.area,
+			 		g_h_s * u[6]^2 * (u[1] - E_h) * comp.area,
+					g_fKdr_s * u[7]^4 * (u[1] - E_K) * comp.area, 
+					g_sKdr_s * u[8]^4 * (u[1] - E_K) * comp.area,
+			 		p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
+					(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area,
+					g_CaLVA_s * u[10]^2 * u[11] * (u[1] - E_Ca) * comp.area,
+					g_Sk_s * u[12] * (u[1] - E_K) * comp.area,
+			 		(u[1] - Em) / (RM_s / comp.area),
+					1.0./(comp.Ra_connect_v') * (V_rep_v - V_connect)] ;
+
+	return current_v
 end

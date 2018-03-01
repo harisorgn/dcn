@@ -56,18 +56,18 @@ end
 
 function z_Sk(Ca::Float64)
 
-	return (Ca^4) / (Ca^4 + (3.0e-7)^4) 
+	return (Ca^4) / (Ca^4 + (3.0e-4)^4) 
 
 end
 
 function t_z_Sk(Ca::Float64)
 
-	if Ca < 0.005e-3	# M
-		return 60.0e-3 - 11.2e3 * Ca
-		#return 0.001 - 0.1867e3 * Ca  
+	if Ca < 0.005	# mM
+		#return 60.0e-3 - 11.2 * Ca
+		return 0.001 - 0.1867 * Ca  
 	else
-		return 4.0e-3
-		#return 6.667e-5
+		#return 4.0e-3
+		return 6.667e-5
 	end
 
 end
@@ -99,7 +99,8 @@ t_h_Naf = tau_t( 16.67e-3, 8.3e-3, -29.0e-3, -66e-3, 9.0e-3, 0.2e-3 ) ;
 
 # Persistent sodium current
 
-const g_Nap_s = 8.0 ;		# S/m^2
+#const g_Nap_s = 8.0 ;		# S/m^2
+const g_Nap_s = 0.0 ;
 
 m_Nap = gate_t( -70.0e-3, -4.1e-3 ) ;
 t_m_Nap = 50.0e-3 ;	# s
@@ -117,7 +118,8 @@ const E_TNC = -35.0e-3 ;	# V
 
 # Hyperpolarisation-activated cyclic nucleotide current
 
-const g_h_s = 2.0	;		# S/m^2
+#const g_h_s = 2.0	;		# S/m^2
+const g_h_s = 0.0 ;
 const g_h_pd = 4.0	;		# S/m^2
 const g_h_dd = 6.0	;		# S/m^2
 
@@ -158,12 +160,11 @@ const z_CaHVA = 2.0 ;	# valence of Ca
 const R = 8.3145 ;			# J/(K*mol) , gas constant
 const F = 96480.0 ;			# C/mol , Faraday constant
 const Temp = 32.0 + 273.15 ;# K
-const Ca_in = 50.0e-9 ;		# M
-const Ca_out = 2.0e-3 ;		# M
 
 # Low voltage activated calcium current CaLVA / CaT
 
-const g_CaLVA_s = 1.5 ;		# S/m^2
+#const g_CaLVA_s = 1.5 ;		# S/m^2
+const g_CaLVA_s = 0.0 ;
 const g_CaLVA_pd = 3.0 ;		# S/m^2
 const g_CaLVA_dd = 3.0 ;		# S/m^2
 
@@ -182,7 +183,10 @@ const g_Sk_dd = 0.66 ;		# S/m^2
 
 # Calcium concentration
 
-const Ca_base = 50e-9 ;	# M
+const Ca_in = 50.0e-6 ;		# mM
+const Ca_out = 2.0 ;		# mM
+const Ca_base = 50.0e-6 ;	# mM
+
 const k_Ca_s = 3.45e-7 ;	# mol/C
 const k_Ca_d = 1.0364e-6 ;	# mol/C
 const t_Ca = 70.0e-3 ; 		# s 
@@ -194,3 +198,9 @@ const n_eq_ax = 5 ;
 const n_eq_pd = 11 ;
 const n_eq_dd = 7 ;
 
+const V0 = -70e-3 ;
+const Ca0 = 50.0e-6 ;
+
+const Ie = 50.0e-12 ;
+const t_pulse_on = 0.5 ;
+const t_pulse_dur = 1.5 ;
