@@ -40,7 +40,7 @@ end
 
 function t_m_CaHVA(V::Float64)
 
-	return 1.0e-3 / (31.746 * (exp((V - 5.0e-3) / -13.89e-3) + 1.0)^(-1) + 3.97e-1 * (V + 8.9e-3) * (exp((V + 8.9e-3) / 5.0e-3) - 1.0)^(-1))
+	return 1.0e-3 / (31.746 * (exp((V - 5.0e-3) / -13.89e-3) + 1.0)^(-1.0) + 3.97e-1 * (V + 8.9e-3) * (exp((V + 8.9e-3) / 5.0e-3) - 1.0)^(-1.0))
 
 end
 
@@ -56,7 +56,7 @@ end
 
 function z_Sk(Ca::Float64)
 
-	return (Ca^4) / (Ca^4 + (3.0e-4)^4) 
+	return (Ca^4.0) / (Ca^4.0 + (3.0e-4)^4.0) 
 
 end
 
@@ -71,6 +71,41 @@ function t_z_Sk(Ca::Float64)
 	end
 
 end
+
+function f(Vh::Float64, k::Float64)
+
+	function g(V::Float64)
+
+		return 1.0 / (1.0 + exp((V - Vh)/k))
+	end
+	return g
+end
+
+m_Naf(V::Float64) = 1.0 / (1.0 + exp((V + 45.0e-3)/-7.3e-3)) ;
+h_Naf(V::Float64) = 1.0 / (1.0 + exp((V + 42.0e-3)/5.9e-3)) ;
+t_m_Naf(V::Float64) = 5.83e-3 / (exp((V - 6.4e-3) / -9.0e-3) + exp((V + 97.0e-3) / 17.0e-3)) + 0.025e-3 ;
+t_h_Naf(V::Float64) = 16.67e-3 / (exp((V - 8.3e-3) / -29.0e-3) + exp((V + 66.0e-3) / 9.0e-3)) + 0.2e-3 ;
+
+m_Nap(V::Float64) = 1.0 / (1.0 + exp((V + 70.0e-3)/-4.1e-3)) ;
+h_Nap(V::Float64) = 1.0 / (1.0 + exp((V + 80.0e-3)/4.0e-3)) ;
+t_h_Nap(V::Float64) = 1750.0e-3 / (1.0 + exp((V + 65.0e-3) / -8.0e-3)) + 250.0e-3 ;
+
+m_h(V::Float64) = 1.0 / (1.0 + exp((V + 80.0e-3)/5.0e-3)) ;
+
+m_fKdr(V::Float64) = 1.0 / (1.0 + exp((V + 40.0e-3)/-7.8e-3)) ;
+t_m_fKdr(V::Float64) = 13.9e-3 / (exp((V + 40.0e-3) / 12.0e-3) + exp((V + 40.0e-3) / -13.0e-3)) + 0.1e-3 ;
+
+m_sKdr(V::Float64) = 1.0 / (1.0 + exp((V + 50.0e-3)/-9.1e-3)) ;
+t_m_sKdr(V::Float64) = 14.95e-3 / (exp((V + 50.0e-3) / 21.74e-3) + exp((V + 50.0e-3) / -13.91e-3)) + 0.05e-3 ;
+
+m_CaHVA(V::Float64) = 1.0 / (1.0 + exp((V + 34.5e-3)/-9.0e-3)) ;
+
+m_CaLVA(V::Float64) = 1.0 / (1.0 + exp((V + 56.0e-3)/-6.2e-3)) ;
+t_m_CaLVA(V::Float64) = 0.333e-3 / (exp((V + 131.0e-3) / -16.7e-3) + exp((V + 15.8e-3) / 18.2e-3)) + 0.204e-3 ;
+
+h_CaLVA(V::Float64) = 1.0 / (1.0 + exp((V + 80.0e-3)/4.0e-3)) ;
+
+
 
 
 # Passive properties
@@ -91,22 +126,23 @@ const g_Naf_ax = 500.0 ;	# S/m^2
 
 const E_Na = 71.0e-3 ;	# V
 
-m_Naf = gate_t( -45.0e-3, -7.3e-3 ) ;
-t_m_Naf = tau_t( 5.83e-3, 6.4e-3, -9.0e-3, -97.0e-3, 17.0e-3, 0.025e-3 ) ;
+#m_Naf = gate_t( -45.0e-3, -7.3e-3 ) ;
 
-h_Naf = gate_t( -42.0e-3, 5.9e-3 ) ;
-t_h_Naf = tau_t( 16.67e-3, 8.3e-3, -29.0e-3, -66e-3, 9.0e-3, 0.2e-3 ) ;
+#t_m_Naf = tau_t( 5.83e-3, 6.4e-3, -9.0e-3, -97.0e-3, 17.0e-3, 0.025e-3 ) ;
+
+#h_Naf = gate_t( -42.0e-3, 5.9e-3 ) ;
+#t_h_Naf = tau_t( 16.67e-3, 8.3e-3, -29.0e-3, -66e-3, 9.0e-3, 0.2e-3 ) ;
 
 # Persistent sodium current
 
 #const g_Nap_s = 8.0 ;		# S/m^2
 const g_Nap_s = 0.0 ;
 
-m_Nap = gate_t( -70.0e-3, -4.1e-3 ) ;
-t_m_Nap = 50.0e-3 ;	# s
+#m_Nap = gate_t( -70.0e-3, -4.1e-3 ) ;
+const t_m_Nap = 50.0e-3 ;	# s
 
-h_Nap = gate_t( -80.0e-3, 4.0e-3 ) ;
-t_h_Nap = tau_h_Nap_t( 1750.0e-3, -65.0e-3, -8.0e-3, 250.0e-3 ) ;
+#h_Nap = gate_t( -80.0e-3, 4.0e-3 ) ;
+#t_h_Nap = tau_h_Nap_t( 1750.0e-3, -65.0e-3, -8.0e-3, 250.0e-3 ) ;
 
 # Tonic non-specific cation current
 
@@ -125,8 +161,8 @@ const g_h_dd = 6.0	;		# S/m^2
 
 const E_h = -45.0e-3 ;	# V
 
-m_h = gate_t( -80.0e-3, 5.0e-3 ) ;
-t_m_h = 400.0e-3 ;	# s
+#m_h = gate_t( -80.0e-3, 5.0e-3 ) ;
+const t_m_h = 400.0e-3 ;	# s
 
 # Fast delayed rectifier fKdr
 
@@ -136,8 +172,8 @@ const g_fKdr_ax = 300.0 ; 	# S/m^2
 
 const E_K = -90.0e-3 ;	# V
 
-m_fKdr = gate_t( -40.0e-3, -7.8e-3 ) ;
-t_m_fKdr = tau_t( 13.9e-3, -40.0e-3, 12.0e-3, -40.0e-3, -13.0e-3, 0.1e-3 ) ;
+#m_fKdr = gate_t( -40.0e-3, -7.8e-3 ) ;
+#t_m_fKdr = tau_t( 13.9e-3, -40.0e-3, 12.0e-3, -40.0e-3, -13.0e-3, 0.1e-3 ) ;
 
 # Slow delayed rectifier sKdr
 
@@ -145,8 +181,8 @@ const g_sKdr_s = 125.0 ;	# S/m^2
 const g_sKdr_pd = 75.0 ;	# S/m^2
 const g_sKdr_ax = 250.0 ;	# S/m^2
 
-m_sKdr = gate_t( -50.0e-3, -9.1e-3 ) ;
-t_m_sKdr = tau_t( 14.95e-3, -50.0e-3, 21.74e-3, -50.0e-3, -13.91e-3, 0.05e-3 ) ;
+#m_sKdr = gate_t( -50.0e-3, -9.1e-3 ) ;
+#t_m_sKdr = tau_t( 14.95e-3, -50.0e-3, 21.74e-3, -50.0e-3, -13.91e-3, 0.05e-3 ) ;
 
 # High voltage activated calcium current CaHVA
 
@@ -154,7 +190,7 @@ const p_CaHVA_s = 7.5e-8 ;	# m/s
 const p_CaHVA_pd = 5.0e-8 ;	# m/s
 const p_CaHVA_dd = 5.0e-8 ;	# m/s
 
-m_CaHVA = gate_t( -34.5e-3, -9.0e-3) ;
+#m_CaHVA = gate_t( -34.5e-3, -9.0e-3) ;
 
 const z_CaHVA = 2.0 ;	# valence of Ca 
 const R = 8.3145 ;			# J/(K*mol) , gas constant
@@ -170,10 +206,10 @@ const g_CaLVA_dd = 3.0 ;		# S/m^2
 
 const E_Ca = 139.0e-3 ;	# V
 
-m_CaLVA = gate_t( -56.0e-3, -6.2e-3 ) ;
-t_m_CaLVA = tau_t( 0.333e-3, -131.0e-3, -16.7e-3, -15.8e-3, 18.2e-3, 0.204e-3 ) ;
+#m_CaLVA = gate_t( -56.0e-3, -6.2e-3 ) ;
+#t_m_CaLVA = tau_t( 0.333e-3, -131.0e-3, -16.7e-3, -15.8e-3, 18.2e-3, 0.204e-3 ) ;
 
-h_CaLVA = gate_t( -80.0e-3, 4.0e-3 ) ;
+#h_CaLVA = gate_t( -80.0e-3, 4.0e-3 ) ;
 
 # Small conductance calcium dependent potassium current Sk
 
@@ -204,3 +240,4 @@ const Ca0 = 50.0e-6 ;
 const Ie = 50.0e-12 ;
 const t_pulse_on = 0.5 ;
 const t_pulse_dur = 1.5 ;
+
