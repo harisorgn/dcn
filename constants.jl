@@ -111,10 +111,12 @@ h_CaLVA(V::Float64) = 1.0 / (1.0 + exp((V + 80.0e-3)/4.0e-3)) ;
 # Passive properties
 
 const CM = 0.0157 ;			# F/m^2
+const CM_my = 0.01 * CM ;	# F/m^2
 const RM_s = 3.556 ;		# Ω m^2
 const RM_d = 3.556 ;		# Ω m^2
 const RM_ax = 3.556 ;		# Ω m^2
-const RA = 2.353 ;			# Ω m^2
+const RM_my = 10.0 ;		# Ω m^2
+const RA = 2.353 ;			# Ω/m
 
 const Em = -66e-3 ;			# V
 
@@ -154,8 +156,8 @@ const E_TNC = -35.0e-3 ;	# V
 
 # Hyperpolarisation-activated cyclic nucleotide current
 
-#const g_h_s = 2.0	;		# S/m^2
-const g_h_s = 0.0 ;
+const g_h_s = 1.0	;		# S/m^2
+#const g_h_s = 0.0 ;
 const g_h_pd = 4.0	;		# S/m^2
 const g_h_dd = 6.0	;		# S/m^2
 
@@ -231,13 +233,15 @@ const Ca_thick = 200.0e-9 ;
 
 const n_eq_s = 13 ;
 const n_eq_ax = 5 ;
+const n_eq_axin = 1 ;
 const n_eq_pd = 11 ;
 const n_eq_dd = 7 ;
 
 const V0 = -70e-3 ;
 const Ca0 = 50.0e-6 ;
 
-const Ie = 50.0e-12 ;
+#const Ie = 50.0e-12 ;
+const Ie = 00.0e-12 ;
 const t_pulse_on = 0.5 ;
 const t_pulse_dur = 1.5 ;
 

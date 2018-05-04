@@ -12,10 +12,31 @@ struct reduced_comp_t
 	d ::Float64
 	Ra ::Float64
 	n_comp ::Float64
-	area_sum ::Float64
+	mrg_n_comp ::Float64
+	area ::Float64
+	full_area_sum ::Float64
 	id ::String
 	connect_to ::String
 	ctype ::Symbol
+end
+
+function resistance_to_soma(comp::String, connect_dict::Dict{String, String}, comp_dict::Dict{String, comp_t})
+
+	R = 0.0 ;
+	current_comp = comp
+
+	while current_comp != "soma"
+
+		l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
+					  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
+					  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
+
+		R += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
+
+		current_comp = connect_dict[current_comp] ;
+	end
+
+	return R 
 end
 
 function increment_strahler_chk(v::Array{Int64})
@@ -77,36 +98,78 @@ function rec_reduced_comp(connect_dict::Dict{String, String}, comp_dict::Dict{St
 						sect_connect_dict::Dict{String, String}, other_type_cluster_root_v::Array{String,1},
 						strahler_dict ::Dict{String, Int64}, strahler_thrs ::Int64, 
 						reduced_comp_v ::Array{reduced_comp_t,1}, comp::String, ctype::Symbol)
-
-	below_thrs_comp_chk = false ;
-	
-	l_sect = 0.0 ;
-	Ra_sect = 0.0 ;
-	n_comp_sect = 0.0 ;
-	area_sum = 0.0 ;
-
-	if strahler_dict[comp] <= strahler_thrs && comp_dict[comp].ctype == ctype
 		
-		below_thrs_comp_chk = true ;	
+	l_seq = 0.0 ;
+	d_seq = 0.0 ;
+	Ra_seq = 0.0 ;
+	n_comp_seq = 0.0 ;
+	full_area_sum = 0.0 ;
 
-		current_comp = comp ;
-		while current_comp != connect_dict[sect_connect_dict[comp]]
+	if ctype != :all 
+		if strahler_dict[comp] <= strahler_thrs && comp_dict[comp].ctype == ctype
+			
+			current_comp = comp ;
+			while current_comp != connect_dict[sect_connect_dict[comp]]
+				
+				l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
+						  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
+						  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
 
-			l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
-					  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
-					  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
+				l_seq += l_current_comp ;
+				Ra_seq += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
+				n_comp_seq += 1.0 ;
+				full_area_sum += pi * l_current_comp * comp_dict[current_comp].d ;
 
-			l_sect += l_current_comp ;
-			Ra_sect += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
-			n_comp_sect += 1.0 ;
-			area_sum += pi * l_sect * comp_dict[current_comp].d ;
+				current_comp = connect_dict[current_comp] ;
+			end
 
-			current_comp = connect_dict[current_comp] ;
+			d_seq = sqrt(4.0 * RA * l_seq / (pi * Ra_seq)) ;
+
+			comp_id = comp ;
+			
+		elseif comp != "soma" && comp_dict[comp].ctype == ctype
+			
+			current_comp = comp ;
+
+			while current_comp != connect_dict[sect_connect_dict[comp]]
+
+				l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
+						  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
+						  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
+
+				Ra_current_comp = 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
+
+				push!(reduced_comp_v, reduced_comp_t(l_current_comp, comp_dict[current_comp].d, Ra_current_comp,
+												1.0, 1.0, pi * l_current_comp * comp_dict[current_comp].d,
+												pi * l_current_comp * comp_dict[current_comp].d,
+												current_comp, connect_dict[current_comp], ctype)) ;
+
+				current_comp = connect_dict[current_comp] ;
+			end
+			
 		end
+	else
+		if strahler_dict[comp] <= strahler_thrs 
+			
+			current_comp = comp ;
+			while current_comp != connect_dict[sect_connect_dict[comp]]
+				
+				l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
+						  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
+						  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
 
-		d_sect = sqrt(RA * l_sect / (pi * Ra_sect)) ;
+				l_seq += l_current_comp ;
+				Ra_seq += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
+				n_comp_seq += 1.0 ;
+				full_area_sum += pi * l_current_comp * comp_dict[current_comp].d ;
 
-		comp_id = comp ;
+				current_comp = connect_dict[current_comp] ;
+			end
+
+			d_seq = sqrt(4.0 * RA * l_seq / (pi * Ra_seq)) ;
+
+			comp_id = comp ;
+		end
 	end
 
 	connect_comp_v = find_value_dict(comp, connect_dict) ;
@@ -123,45 +186,53 @@ function rec_reduced_comp(connect_dict::Dict{String, String}, comp_dict::Dict{St
 	n_comp_par = 0.0 ;
 
 	for c in connect_comp_v
-		if comp_dict[c].ctype == ctype && strahler_dict[c] <= strahler_thrs
+		if ctype != :all
+			if comp_dict[c].ctype == ctype && strahler_dict[c] <= strahler_thrs
+				
+				n_connect_comp_below_thrs += 1 ;
 
-			n_connect_comp_below_thrs += 1 ;
+				sect_start_connect_comp = find_value_dict(c, sect_connect_dict) ;
+				
+				reduced_connect_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
+														other_type_cluster_root_v, strahler_dict, strahler_thrs,
+														reduced_comp_v, sect_start_connect_comp[1], ctype) ;
 
-			sect_start_connect_comp = find_value_dict(c, sect_connect_dict) ;
+				a_par += reduced_connect_comp.area ;
+				la_par += reduced_connect_comp.l * reduced_connect_comp.area ;
+				d_par += reduced_connect_comp.d ^ 2.0 ;
+				Ra_par_prod *= reduced_connect_comp.Ra ;
+				Ra_par_sum += reduced_connect_comp.Ra ;
+				
+				n_comp_par += reduced_connect_comp.n_comp ;
+				full_area_sum += reduced_connect_comp.full_area_sum ;
+				comp_id = c ;
 
-			reduced_connect_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
-													other_type_cluster_root_v, strahler_dict, strahler_thrs,
-													reduced_comp_v, sect_start_connect_comp[1], ctype) ;
-
-			a_par += pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-			la_par += reduced_connect_comp.l * pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-			d_par += reduced_connect_comp.d ^ 2.0 ;
-			Ra_par_prod *= reduced_connect_comp.Ra ;
-			Ra_par_sum += reduced_connect_comp.Ra ;
-			
-			n_comp_par += reduced_connect_comp.n_comp ;
-			area_sum += reduced_connect_comp.area_sum ;
-			comp_id = c ;
-		elseif comp_dict[c].ctype == ctype && strahler_dict[c] > strahler_thrs
-			current_comp = find_value_dict(c, sect_connect_dict)[1] ;
-
-			while current_comp != connect_dict[c]
-
-				l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
-						  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
-						  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
-
-				Ra_current_comp = 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
-
-				push!(reduced_comp_v, reduced_comp_t(l_current_comp, comp_dict[current_comp].d, Ra_current_comp,
-												1.0, pi * l_current_comp * comp_dict[current_comp].d,
-												current_comp, connect_dict[current_comp], ctype)) ;
-
-				current_comp = connect_dict[current_comp] ;
+			elseif comp_dict[c].ctype != ctype
+				if ~any(x -> x == comp, other_type_cluster_root_v) && ctype == :pdend
+					push!(other_type_cluster_root_v, comp) ;
+				end
 			end
 		else
-			if ~any(x -> x == comp, other_type_cluster_root_v) && ctype == :pdend
-				push!(other_type_cluster_root_v, comp) ;
+
+			if strahler_dict[c] <= strahler_thrs
+			
+				n_connect_comp_below_thrs += 1 ;
+
+				sect_start_connect_comp = find_value_dict(c, sect_connect_dict) ;
+				
+				reduced_connect_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
+														other_type_cluster_root_v, strahler_dict, strahler_thrs,
+														reduced_comp_v, sect_start_connect_comp[1], ctype) ;
+
+				a_par += reduced_connect_comp.area ;
+				la_par += reduced_connect_comp.l * reduced_connect_comp.area ;
+				d_par += reduced_connect_comp.d ^ 2.0 ;
+				Ra_par_prod *= reduced_connect_comp.Ra ;
+				Ra_par_sum += reduced_connect_comp.Ra ;
+				
+				n_comp_par += reduced_connect_comp.n_comp ;
+				full_area_sum += reduced_connect_comp.full_area_sum ;
+				comp_id = c ;
 			end
 		end
 	end
@@ -176,150 +247,63 @@ function rec_reduced_comp(connect_dict::Dict{String, String}, comp_dict::Dict{St
 		Ra_par = Ra_par_prod ;
 	end
 
-	if below_thrs_comp_chk || n_connect_comp_below_thrs > 0 
-		l_eq = l_sect + l_par ;
-		Ra_eq = Ra_sect + Ra_par ;
-		d_eq = sqrt(RA * l_eq / (pi * Ra_eq)) ;
-		n_comp = n_comp_sect + n_comp_par ;
+	if ctype != :all 
+		if strahler_dict[comp] <= strahler_thrs && comp_dict[comp].ctype == ctype 
+			l_eq = l_seq + l_par ;
+			Ra_eq = Ra_seq + Ra_par ;
+			d_eq = sqrt(4.0 * RA * l_eq / (pi * Ra_eq)) ;
+			n_comp = n_comp_seq + n_comp_par ;
+			mrg_n_comp = 1.0 ;
 
-		if strahler_dict[comp] > strahler_thrs
-			connect_to = comp ;
-		else
 			connect_to = connect_dict[sect_connect_dict[comp]] ;
-		end
-		
-		return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, area_sum, comp_id, connect_to, ctype)
-	end
 
-	#=
-	for c in connect_comp_v
-		if comp_dict[c].ctype == ctype #&& strahler_dict[c] <= strahler_thrs
-			cluster_end_chk = false ;
-		else
-			if ~any(x -> x == comp, other_type_cluster_root_v) && ctype == :pdend
-				push!(other_type_cluster_root_v, comp) ;
+			return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, pi*d_eq*l_eq, full_area_sum, comp_id, connect_to, ctype)
+
+		elseif (strahler_dict[comp] > strahler_thrs || comp_dict[comp].ctype != ctype) && 
+				n_connect_comp_below_thrs > 0
+			Ra_eq = Ra_par_sum ;
+			d_eq = d_par ; 
+			n_comp = n_comp_seq + n_comp_par ;
+			mrg_n_comp = n_connect_comp_below_thrs ;
+			if ctype == :pdend
+				l_eq = l_par ;
+				reduced_area = pi * l_eq * d_eq ; 
+			elseif ctype == :ddend
+				l_eq = la_par ;
+				reduced_area = a_par ;
+				#l_eq = l_par ;
+				#reduced_area = pi * l_eq * d_eq ; 
 			end
+
+			connect_to = comp ;
+
+			return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, a_par, full_area_sum, comp_id, connect_to, ctype)
 		end
-	end
-
-	if cluster_end_chk && strahler_dict[comp] <= strahler_thrs
-
-		l_eq = 0.0 ;
-		d_eq = 0.0 ;
-		Ra_eq = 0.0 ;
-		n_comp = 0.0 ;
-
-		current_comp = comp ;
-		while current_comp != connect_dict[sect_connect_dict[comp]]
-
-			l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
-					  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
-					  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
-
-			l_eq += l_current_comp ;
-			Ra_eq += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2)
-			n_comp += 1.0 ;
-
-			current_comp = connect_dict[current_comp] ;
-		end
-
-		d_eq = sqrt(RA * l_eq / (pi * Ra_eq)) ;
-		Ra_eq = Ra_eq / n_comp ;
-
-		return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, comp, current_comp, ctype) ;
 	else
-	=#
+		if strahler_dict[comp] <= strahler_thrs 
+			l_eq = l_seq + l_par ;
+			Ra_eq = Ra_seq + Ra_par ;
+			d_eq = sqrt(4.0 * RA * l_eq / (pi * Ra_eq)) ;
+			n_comp = n_comp_seq + n_comp_par ;
+			mrg_n_comp = 1.0 ;
 
-	#=
-		la_sum = 0.0 ;
-		a_sum = 0.0 ;
-		d_eq = 0.0 ;
-		Ra_prod = 1.0 ;
-		Ra_sum = 0.0 ;
-		n_comp = 0.0 ;
-		Y_merge_chk = false ;
-		for c in connect_comp_v
-			if comp_dict[c].ctype == ctype && strahler_dict[c] <= strahler_thrs
-				sect_start_connect_comp = find_value_dict(c, sect_connect_dict) ;
+			connect_to = connect_dict[sect_connect_dict[comp]] ;
 
-				reduced_connect_comp = rec_reduced_comp(connect_dict, n_connect_dict, sect_connect_dict,
-														other_type_cluster_root_v, strahler_dict, strahler_thrs,
-														reduced_comp_v, sect_start_connect_comp[1], ctype) ;
-				#if reduced_connect_comp != nothing
-					a_sum += pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-					la_sum += reduced_connect_comp.l * pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-					d_eq += reduced_connect_comp.d ^ 2.0 ;
-					Ra_prod *= reduced_connect_comp.Ra ;
-					Ra_sum += reduced_connect_comp.Ra ;
-					n_comp += reduced_connect_comp.n_comp ;
+			return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, pi*d_eq*l_eq, full_area_sum, comp_id, connect_to, ctype)
 
-					Y_merge_chk = true ;
-				#end
+		elseif strahler_dict[comp] > strahler_thrs  && n_connect_comp_below_thrs > 0	
+			Ra_eq = Ra_par_sum / n_connect_comp_below_thrs ;
+			d_eq = d_par ; 
+			n_comp = n_comp_seq + n_comp_par ;
+			mrg_n_comp = n_connect_comp_below_thrs ;
+			l_eq = l_par ;
 
-			elseif comp_dict[c].ctype == ctype && strahler_dict[c] > strahler_thrs
-				current_comp = find_value_dict(c, sect_connect_dict) ;
+			connect_to = comp ;
 
-				while current_comp != connect_dict[c]
-
-					l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
-							  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
-							  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
-
-					Ra_current_comp = 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2) ;
-
-					push!(reduced_comp_v, reduced_comp_t(l_current_comp, comp_dict[current_comp].d, Ra_current_comp,
-													1.0, current_comp, connect_dict[current_comp], ctype)) ;
-
-					current_comp = connect_dict[current_comp] ;
-				end
-			else
-				if ~any(x -> x == comp, other_type_cluster_root_v) && ctype == :pdend
-					push!(other_type_cluster_root_v, comp) ;
-				end
-			end
+			return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, a_par, full_area_sum, comp_id, connect_to, ctype)
 		end
 
-		if strahler_dict[comp] <= strahler_thrs && reduced_connect_comp.ctype == comp_dict[comp].ctype
-			if Y_merge_chk
-				l_eq = la_sum / a_sum ;
-				Ra_eq = Ra_prod / Ra_sum ;
-				d_eq = sqrt(d_eq) ;
-			else
-				l_eq = 0.0 ;
-				Ra_eq = 0.0 ;
-				d_eq = 0.0 ;
-			end
-
-			current_comp = comp ;
-		#if reduced_connect_comp.ctype == comp_dict[comp].ctype
-			l_eq_sect = 0.0 ;
-			Ra_eq_sect = 0.0 ;
-
-			while current_comp != connect_dict[sect_connect_dict[comp]]
-
-				l_current_comp = sqrt((comp_dict[current_comp].x - comp_dict[connect_dict[current_comp]].x)^2 +
-						  (comp_dict[current_comp].y - comp_dict[connect_dict[current_comp]].y)^2 +
-						  (comp_dict[current_comp].z - comp_dict[connect_dict[current_comp]].z)^2 ) ;
-
-				l_eq_sect += l_current_comp ;
-				Ra_eq_sect += 4.0 * RA * l_current_comp / (pi * comp_dict[current_comp].d^2)
-				n_comp += 1.0 ;
-
-				current_comp = connect_dict[current_comp] ;
-			end
-
-			d_eq_sect = sqrt(RA * l_eq_sect / (pi * Ra_eq_sect)) ;
-			l_eq += l_eq_sect ;
-			d_eq = sqrt(d_eq^2.0 + d_eq_sect^2.0) ;
-			Ra_eq += Ra_eq_sect ;
-		#end
-
-			return reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, comp, current_comp, ctype) 
-		end
 	end
-	=#
-
-
 end
 
 function strahler(strahler_thrs ::Int64)
@@ -328,15 +312,21 @@ function strahler(strahler_thrs ::Int64)
 	reduced_comp_v = Array{reduced_comp_t, 1}() ;
 
 	file = open("pdend2.txt", "r")
+	#file = open("pdend_tst.txt", "r")
 	pdend = readdlm(file) ;
 	close(file)
 
 	file = open("ddend2.txt", "r")
+	#file = open("ddend_tst.txt", "r")
 	ddend = readdlm(file) ;
 	close(file)
 
 	file = open("axis.txt", "r")
 	axis = readdlm(file) ;
+	close(file)
+
+	file = open("axin.txt", "r")
+	axin = readdlm(file) ;
 	close(file)
 
 	strahler_dict = Dict{String, Int64}() ;
@@ -353,31 +343,55 @@ function strahler(strahler_thrs ::Int64)
 	sizehint!(n_connect_dict, size(pdend,1) + size(ddend,1) + 1) ;
 
 	push!(reduced_comp_v, reduced_comp_t(0.0, comp_dict["soma"].d, 8.0 * RA / (pi * comp_dict["soma"].d),
-										1.0, pi * comp_dict["soma"].d^2.0, "soma", "", :s)) ;
-
+										1.0, 1.0, pi * comp_dict["soma"].d^2.0, pi * comp_dict["soma"].d^2.0,
+										"soma", "", :s)) ;
+	
 	l_axis = 0.0 ;
 	Ra_axis = 0.0 ;
 	n_comp = 0.0 ;
-	area_sum = 0.0 ;
-	for i = 1 : size(axis,1)-1
+	full_area_sum = 0.0 ;
+	for i = 2 : size(axis,1)
 
-		current_l_axis = sqrt((axis[end - i + 1,1] - axis[end - i,1])^2 + 
-						 (axis[end - i + 1,2] - axis[end - i,2])^2 +
-						 (axis[end - i + 1,3] - axis[end - i,3])^2) ;
+		current_l_axis = sqrt((axis[i,1] - axis[i - 1,1])^2.0 + 
+						 (axis[i,2] - axis[i - 1,2])^2.0 +
+						 (axis[i,3] - axis[i - 1,3])^2.0) ;
 
 		l_axis += current_l_axis * 1e-6 ;
 		Ra_axis += 4.0 * RA * current_l_axis * 1e-6 / (pi * (axis[i,4] * 1e-6)^2.0) ;
 		n_comp += 1.0 ;
-		area_sum += pi * current_l_axis * 1e-6 * axis[i,4] * 1e-6 ; 
+		full_area_sum += pi * current_l_axis * 1e-6 * axis[i,4] * 1e-6 ; 
 	end
 
-	d_axis = sqrt(RA * l_axis / (pi * Ra_axis)) ;
+	d_axis = sqrt(4.0 * RA * l_axis / (pi * Ra_axis)) ;
 
-	push!(reduced_comp_v, reduced_comp_t(l_axis, d_axis, Ra_axis, n_comp, area_sum, "axis", "axhill", :axis)) ;
+	push!(reduced_comp_v, reduced_comp_t(l_axis, d_axis, Ra_axis, n_comp, 1.0, pi*l_axis*d_axis, 
+										full_area_sum, "axis", "axhill", :axis)) ;
 
-	push!(reduced_comp_v, reduced_comp_t(5.0e-6, 4.75e-6, 4.0 * RA * 5.0e-6 / (pi * (4.75e-6)^2.0), 1.0, 
-										pi * 5.0e-6 * 4.75e-6, "axhill", "soma", :axhill)) ;
+	l_axin = 0.0 ;
+	Ra_axin = 0.0 ;
+	n_comp = 0.0 ;
+	full_area_sum = 0.0 ;
+	for i = 2 : size(axin,1)
 
+		current_l_axin = sqrt((axin[i,1] - axin[i - 1,1])^2.0 + 
+						 (axin[i,2] - axin[i - 1,2])^2.0 +
+						 (axin[i,3] - axin[i - 1,3])^2.0) ;
+
+		l_axin += current_l_axin * 1e-6 ;
+		Ra_axin += 4.0 * RA * current_l_axin * 1e-6 / (pi * (axin[i,4] * 1e-6)^2.0) ;
+		n_comp += 1.0 ;
+		full_area_sum += pi * current_l_axin * 1e-6 * axin[i,4] * 1e-6 ; 
+	end
+
+	d_axin = sqrt(4.0 * RA * l_axin / (pi * Ra_axin)) ;
+
+	push!(reduced_comp_v, reduced_comp_t(l_axin, d_axin, Ra_axin, n_comp, 1.0, pi*l_axin*d_axin, 
+										full_area_sum, "axin", "axis", :axin)) ;
+
+	push!(reduced_comp_v, reduced_comp_t(5.0e-6, 4.75e-6, 4.0 * RA * 5.0e-6 / (pi * (4.75e-6)^2.0), 1.0, 1.0,
+										pi * 5.0e-6 * 4.75e-6, pi * 5.0e-6 * 4.75e-6,
+										"axhill", "soma", :axhill)) ;
+	
 	for i = 1 : size(pdend, 1)
 
 		comp_dict[pdend[i,1]] = comp_t(pdend[i,3]*1e-6, pdend[i,4]*1e-6, pdend[i,5]*1e-6, pdend[i,6]*1e-6, 
@@ -411,95 +425,316 @@ function strahler(strahler_thrs ::Int64)
 
 	closed_v = Array{String,1}() ;
 	push!(closed_v, "soma") ;
-
+	
 	while ~isempty(open_v)
 
 		current_comp = open_v[1] ;
-		next_comp = current_comp ;
+		ctype = comp_dict[open_v[1]].ctype ;
+		
+		while n_connect_dict[connect_dict[current_comp]] == 1 && 
+			comp_dict[connect_dict[current_comp]].ctype == ctype
 
-		while n_connect_dict[connect_dict[next_comp]] == 1 && 
-			comp_dict[connect_dict[next_comp]].ctype == comp_dict[current_comp].ctype
-
-				next_comp = connect_dict[next_comp] ;
+				current_comp = connect_dict[current_comp] ;
 		end
 
-		sect_connect_dict[current_comp] = next_comp ;
+		sect_connect_dict[open_v[1]] = current_comp ;
 
-		if (strahler_dict[connect_dict[next_comp]] > strahler_thrs) &&
-			~any(x -> x == connect_dict[next_comp], cluster_root_v)
+		if strahler_dict[connect_dict[current_comp]] > strahler_thrs &&
+			~any(x -> x == connect_dict[current_comp], cluster_root_v) 
 
-			push!(cluster_root_v, connect_dict[next_comp])
+			push!(cluster_root_v, connect_dict[current_comp])
 		end
 
-		if ~any(x -> x == connect_dict[next_comp], closed_v) &&
-		   ~any(x -> x == connect_dict[next_comp], open_v)			   
-				push!(open_v, connect_dict[next_comp]) ;
+		if ~any(x -> x == connect_dict[current_comp], closed_v) &&
+		   ~any(x -> x == connect_dict[current_comp], open_v)			   
+				push!(open_v, connect_dict[current_comp]) ;
 		end
 
-		push!(closed_v, current_comp) ;
+		push!(closed_v, open_v[1]) ;
 		shift!(open_v) ;
 
 	end
-
-	for comp in cluster_root_v 
-
+	
+	for comp in cluster_root_v
+		
 		other_type_cluster_root_v = Array{String,1}() ; 
-		reduced_connect_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
+		joint_reduced_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
+												other_type_cluster_root_v, strahler_dict, strahler_thrs,
+												reduced_comp_v, comp, :all) ;
+		
+		if joint_reduced_comp != nothing 
+			#push!(reduced_comp_v, joint_reduced_comp) ;
+		end
+		
+		pdend_reduced_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
 												other_type_cluster_root_v, strahler_dict, strahler_thrs,
 												reduced_comp_v, comp, :pdend) ;
-		if reduced_connect_comp != nothing
-			push!(reduced_comp_v, reduced_connect_comp) ;
+		
+		if pdend_reduced_comp != nothing 
+			#push!(reduced_comp_v, pdend_reduced_comp) ;
 		end
-
+		
 		la_sum = 0.0 ;
-		a_sum = 0.0 ;
+		area_sum = 0.0 ;
 		d_eq = 0.0 ;
-		Ra_prod = 1.0 ;
 		Ra_sum = 0.0 ;
 		n_comp = 0.0 ;
-		reduced_comp_chk = false ;
+		mrg_n_comp = 0.0 ;
 		comp_id = " ";
+		full_area_sum = 0.0 ;
 		for other_type_comp in other_type_cluster_root_v
 
 			chk_cluster_root_v = Array{String,1}() ;
 
-			reduced_connect_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
+			ddend_part_reduced_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
 														chk_cluster_root_v, strahler_dict, strahler_thrs,
 														reduced_comp_v, other_type_comp, :ddend) ;
-			if reduced_connect_comp != nothing
-				a_sum += pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-				la_sum += reduced_connect_comp.l * pi * reduced_connect_comp.l * reduced_connect_comp.d ;
-				d_eq += reduced_connect_comp.d ^ 2.0 ;
-				Ra_prod *= reduced_connect_comp.Ra ;
-				Ra_sum += reduced_connect_comp.Ra ;
-				n_comp += reduced_connect_comp.n_comp ;
+			if ddend_part_reduced_comp != nothing
 
-				reduced_comp_chk = true ;
-				comp_id = reduced_connect_comp.id ;
+				area_sum += ddend_part_reduced_comp.area ;
+				la_sum += ddend_part_reduced_comp.l ;
+				#la_sum += ddend_part_reduced_comp.l * ddend_part_reduced_comp.area ;
+				d_eq += ddend_part_reduced_comp.d ^ 2.0 ;
+				n_comp += ddend_part_reduced_comp.n_comp ;
+				
+				comp_id = ddend_part_reduced_comp.id ;
+				full_area_sum += ddend_part_reduced_comp.full_area_sum ;
+
+				#R_path = resistance_to_soma(other_type_comp, connect_dict, comp_dict) ;
+				#Ra_sum += R_path * other_type_reduced_connect_comp.Ra ;
+				#mrg_n_comp += R_path ;
+				Ra_sum += ddend_part_reduced_comp.Ra ;
+				mrg_n_comp += ddend_part_reduced_comp.mrg_n_comp ;
+				
 			end
 		end
-		l_eq = la_sum / a_sum ;
-		Ra_eq = Ra_prod / Ra_sum ;
+		l_eq = la_sum / area_sum ;
 		d_eq = sqrt(d_eq) ;
+		Ra_eq = Ra_sum ;
+		reduced_area = area_sum ;
 
-		if reduced_comp_chk
-			other_type_reduced_comp = reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, a_sum, comp_id,
-													reduced_comp_v[end].id, reduced_connect_comp.ctype) ;
-
-			push!(reduced_comp_v, other_type_reduced_comp) ;
+		if ~isempty(other_type_cluster_root_v)
+			if pdend_reduced_comp != nothing
+				ddend_reduced_comp = reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, reduced_area, 
+														full_area_sum, comp_id, reduced_comp_v[end].id, :ddend) ;
+			else
+				idx = find(x -> x.id == comp, reduced_comp_v) ;
+				ddend_reduced_comp = reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, reduced_area, 
+														full_area_sum, comp_id, reduced_comp_v[idx[1]].id, :ddend) ;
+			end
+			#push!(reduced_comp_v, ddend_reduced_comp) ;
 		end
+		
+		
+		ddend_ratio = ddend_reduced_comp.l / joint_reduced_comp.l ;
+		ddend_l = ddend_ratio * joint_reduced_comp.l ;
+		ddend_Ra = ddend_ratio * joint_reduced_comp.Ra ;
+
+		pdend_l = joint_reduced_comp.l - ddend_l ;
+		pdend_Ra = joint_reduced_comp.Ra - ddend_Ra ;
+		#=
+		push!(reduced_comp_v, reduced_comp_t(pdend_l, joint_reduced_comp.d,
+											pdend_Ra, pdend_reduced_comp.n_comp,
+											1.0, pdend_reduced_comp.area, 
+											0.5*pdend_reduced_comp.full_area_sum, pdend_reduced_comp.id, 
+											pdend_reduced_comp.connect_to, :pdend)) ;
+
+		push!(reduced_comp_v, reduced_comp_t(ddend_l, joint_reduced_comp.d,
+											ddend_Ra, ddend_reduced_comp.n_comp,
+											1.0, ddend_reduced_comp.area,
+											0.5*ddend_reduced_comp.full_area_sum, ddend_reduced_comp.id, 
+											ddend_reduced_comp.connect_to, :ddend)) ;
+		=#
+		
+		push!(reduced_comp_v, reduced_comp_t(pdend_reduced_comp.l, joint_reduced_comp.d,
+											pdend_reduced_comp.Ra/pdend_reduced_comp.mrg_n_comp, 
+											pdend_reduced_comp.n_comp,
+											1.0, pdend_reduced_comp.area , 
+											0.5*pdend_reduced_comp.full_area_sum, pdend_reduced_comp.id, 
+											pdend_reduced_comp.connect_to, :pdend)) ;
+
+		push!(reduced_comp_v, reduced_comp_t(joint_reduced_comp.l - pdend_reduced_comp.l, joint_reduced_comp.d,
+											joint_reduced_comp.Ra - (pdend_reduced_comp.Ra/pdend_reduced_comp.mrg_n_comp), 
+											ddend_reduced_comp.n_comp,
+											1.0, ddend_reduced_comp.area ,
+											0.5*ddend_reduced_comp.full_area_sum, ddend_reduced_comp.id, 
+											ddend_reduced_comp.connect_to, :ddend)) ;
+		
+		#println(joint_reduced_comp.full_area_sum)
+		#println(pdend_reduced_comp.full_area_sum + ddend_reduced_comp.full_area_sum)
+		#println("-------------------------")
+		
 	end
+
+
 
 	nc = 0.0 ;
 	for i = 1 : length(reduced_comp_v)
 		nc += reduced_comp_v[i].n_comp ;
 	end 
-	nc -= reduced_comp_v[1].n_comp + reduced_comp_v[2].n_comp + reduced_comp_v[3].n_comp ;
+	nc -= reduced_comp_v[1].n_comp + reduced_comp_v[2].n_comp + reduced_comp_v[3].n_comp + reduced_comp_v[4].n_comp;
+	println("dendritic compartments included in reduced model: ", nc)
+	println("actual number of dendritic compartments: ", size(pdend,1) + size(ddend,1))
+	println("reduced model compartments: ",length(reduced_comp_v))
+	
+	
+	p1 = 0 ;
+	p2 = 0 ; 
+	p3 = 0 ;
+	d1 = 0 ;
+	d2 = 0 ;
+	d3 = 0 ;
+	for c in keys(comp_dict)
+		if comp_dict[c].ctype == :pdend
+			if strahler_dict[c] == 1
+				p1 += 1 ;
+			elseif strahler_dict[c] == 2
+				p2 += 1 ;
+			elseif strahler_dict[c] == 3
+				p3 +=1 ;
+			end
+		elseif comp_dict[c].ctype == :ddend
+			if strahler_dict[c] == 1
+				d1 += 1 ;
+			elseif strahler_dict[c] == 2
+				d2 += 1 ;
+			elseif strahler_dict[c] == 3
+				d3 +=1 ;
+			end
+		end
+	end
 
-	println(nc)
-	println(size(pdend,1) + size(ddend,1))
-	println(length(reduced_comp_v))
-
+	println(p1/size(pdend,1) *100, " ", d1/size(ddend,1)*100)
+	println(p2/size(pdend,1)*100, " ", d2/size(ddend,1)*100)
+	println(p3/size(pdend,1)*100, " ", d3/size(ddend,1)*100)
+	
 	return reduced_comp_v
+	
+end
 
+function full_model()
+
+
+	reduced_comp_v = Array{reduced_comp_t, 1}() ;
+
+	file = open("pdend2.txt", "r")
+	#file = open("pdend_tst.txt", "r")
+	pdend = readdlm(file) ;
+	close(file)
+
+	file = open("ddend2.txt", "r")
+	#file = open("ddend_tst.txt", "r")
+	ddend = readdlm(file) ;
+	close(file)
+
+	file = open("axis.txt", "r")
+	axis = readdlm(file) ;
+	close(file)
+
+	file = open("axin.txt", "r")
+	axin = readdlm(file) ;
+	close(file)
+	
+	strahler_dict = Dict{String, Int64}() ;
+	sizehint!(strahler_dict, size(pdend,1) + size(ddend,1) + 1) ;
+
+	comp_dict = Dict{String, comp_t}() ;
+	sizehint!(comp_dict, size(pdend,1) + size(ddend,1) + 1) ;
+	comp_dict["soma"] = comp_t(0.0, 0.0, 0.0, 21.597e-6, :s) ;
+
+	connect_dict = Dict{String, String}() ;
+	sizehint!(connect_dict, size(pdend,1) + size(ddend,1)) ;
+
+	n_connect_dict = Dict{String, Int64}() ;
+	sizehint!(n_connect_dict, size(pdend,1) + size(ddend,1) + 1) ;
+
+	push!(reduced_comp_v, reduced_comp_t(0.0, comp_dict["soma"].d, 8.0 * RA / (pi * comp_dict["soma"].d),
+										1.0, 1.0, pi * comp_dict["soma"].d^2.0, pi * comp_dict["soma"].d^2.0,
+										"soma", "", :s)) ;
+
+	l_axis = 0.0 ;
+	Ra_axis = 0.0 ;
+	n_comp = 0.0 ;
+	full_area_sum = 0.0 ;
+	for i = 2 : size(axis,1)
+
+		current_l_axis = sqrt((axis[i,1] - axis[i - 1,1])^2.0 + 
+						 (axis[i,2] - axis[i - 1,2])^2.0 +
+						 (axis[i,3] - axis[i - 1,3])^2.0) ;
+
+		l_axis += current_l_axis * 1e-6 ;
+		Ra_axis += 4.0 * RA * current_l_axis * 1e-6 / (pi * (axis[i,4] * 1e-6)^2.0) ;
+		n_comp += 1.0 ;
+		full_area_sum += pi * current_l_axis * 1e-6 * axis[i,4] * 1e-6 ; 
+	end
+
+	d_axis = sqrt(4.0 * RA * l_axis / (pi * Ra_axis)) ;
+
+	push!(reduced_comp_v, reduced_comp_t(l_axis, d_axis, Ra_axis, n_comp, 1.0, pi*l_axis*d_axis, 
+										full_area_sum, "axis", "axhill", :axis)) ;
+
+	l_axin = 0.0 ;
+	Ra_axin = 0.0 ;
+	n_comp = 0.0 ;
+	full_area_sum = 0.0 ;
+	for i = 2 : size(axin,1)
+
+		current_l_axin = sqrt((axin[i,1] - axin[i - 1,1])^2.0 + 
+						 (axin[i,2] - axin[i - 1,2])^2.0 +
+						 (axin[i,3] - axin[i - 1,3])^2.0) ;
+
+		l_axin += current_l_axin * 1e-6 ;
+		Ra_axin += 4.0 * RA * current_l_axin * 1e-6 / (pi * (axin[i,4] * 1e-6)^2.0) ;
+		n_comp += 1.0 ;
+		full_area_sum += pi * current_l_axin * 1e-6 * axin[i,4] * 1e-6 ; 
+	end
+
+	d_axin = sqrt(4.0 * RA * l_axin / (pi * Ra_axin)) ;
+
+	push!(reduced_comp_v, reduced_comp_t(l_axin, d_axin, Ra_axin, n_comp, 1.0, pi*l_axin*d_axin, 
+										full_area_sum, "axin", "axis", :axin)) ;
+
+	push!(reduced_comp_v, reduced_comp_t(5.0e-6, 4.75e-6, 4.0 * RA * 5.0e-6 / (pi * (4.75e-6)^2.0), 1.0, 1.0,
+										pi * 5.0e-6 * 4.75e-6, pi * 5.0e-6 * 4.75e-6,
+										"axhill", "soma", :axhill)) ;
+
+	for i = 1 : size(pdend, 1)
+
+		comp_dict[pdend[i,1]] = comp_t(pdend[i,3]*1e-6, pdend[i,4]*1e-6, pdend[i,5]*1e-6, pdend[i,6]*1e-6, 
+										:pdend) ;
+
+		connect_dict[pdend[i,1]] = pdend[i,2] ;
+
+		get!(n_connect_dict, pdend[i,1], 0);
+		n_connect_dict[pdend[i,2]] = get(n_connect_dict, pdend[i,2], 0) + 1 ;
+
+
+	end
+
+	for i = 1 : size(ddend, 1)
+
+		comp_dict[ddend[i,1]] = comp_t(ddend[i,3]*1e-6, ddend[i,4]*1e-6, ddend[i,5]*1e-6, ddend[i,6]*1e-6, 
+										:ddend) ;
+
+		connect_dict[ddend[i,1]] = ddend[i,2] ;
+
+		get!(n_connect_dict, ddend[i,1], 0);
+		n_connect_dict[ddend[i,2]] = get(n_connect_dict, ddend[i,2], 0) + 1 ;
+
+	end
+
+
+	for comp in keys(comp_dict)
+		if comp != "soma" #&& comp_dict[comp].ctype == :pdend
+		l_current_comp = sqrt((comp_dict[comp].x - comp_dict[connect_dict[comp]].x)^2 +
+					  (comp_dict[comp].y - comp_dict[connect_dict[comp]].y)^2 +
+					  (comp_dict[comp].z - comp_dict[connect_dict[comp]].z)^2 ) ;
+
+		push!(reduced_comp_v, reduced_comp_t(l_current_comp, comp_dict[comp].d, 4.0 * RA * l_current_comp / (pi * comp_dict[comp].d^2.0),
+											1.0, 1.0, pi * l_current_comp * comp_dict[comp].d, 
+											pi * l_current_comp * comp_dict[comp].d, comp, connect_dict[comp], comp_dict[comp].ctype)) ;
+		end
+	end
+	println(length(reduced_comp_v))
+	return reduced_comp_v
 end
