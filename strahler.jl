@@ -271,8 +271,6 @@ function rec_reduced_comp(connect_dict::Dict{String, String}, comp_dict::Dict{St
 			elseif ctype == :ddend
 				l_eq = la_par ;
 				reduced_area = a_par ;
-				#l_eq = l_par ;
-				#reduced_area = pi * l_eq * d_eq ; 
 			end
 
 			connect_to = comp ;
@@ -311,21 +309,19 @@ function strahler(strahler_thrs ::Int64)
 
 	reduced_comp_v = Array{reduced_comp_t, 1}() ;
 
-	file = open("pdend2.txt", "r")
-	#file = open("pdend_tst.txt", "r")
+	file = open("./data/pDend.txt", "r")
 	pdend = readdlm(file) ;
 	close(file)
 
-	file = open("ddend2.txt", "r")
-	#file = open("ddend_tst.txt", "r")
+	file = open("./data/dDend.txt", "r")
 	ddend = readdlm(file) ;
 	close(file)
 
-	file = open("axis.txt", "r")
+	file = open("./data/axIS.txt", "r")
 	axis = readdlm(file) ;
 	close(file)
 
-	file = open("axin.txt", "r")
+	file = open("./data/axIN.txt", "r")
 	axin = readdlm(file) ;
 	close(file)
 
@@ -462,17 +458,9 @@ function strahler(strahler_thrs ::Int64)
 												other_type_cluster_root_v, strahler_dict, strahler_thrs,
 												reduced_comp_v, comp, :all) ;
 		
-		if joint_reduced_comp != nothing 
-			#push!(reduced_comp_v, joint_reduced_comp) ;
-		end
-		
 		pdend_reduced_comp = rec_reduced_comp(connect_dict, comp_dict, sect_connect_dict,
 												other_type_cluster_root_v, strahler_dict, strahler_thrs,
 												reduced_comp_v, comp, :pdend) ;
-		
-		if pdend_reduced_comp != nothing 
-			#push!(reduced_comp_v, pdend_reduced_comp) ;
-		end
 		
 		la_sum = 0.0 ;
 		area_sum = 0.0 ;
@@ -493,16 +481,12 @@ function strahler(strahler_thrs ::Int64)
 
 				area_sum += ddend_part_reduced_comp.area ;
 				la_sum += ddend_part_reduced_comp.l ;
-				#la_sum += ddend_part_reduced_comp.l * ddend_part_reduced_comp.area ;
 				d_eq += ddend_part_reduced_comp.d ^ 2.0 ;
 				n_comp += ddend_part_reduced_comp.n_comp ;
 				
 				comp_id = ddend_part_reduced_comp.id ;
 				full_area_sum += ddend_part_reduced_comp.full_area_sum ;
 
-				#R_path = resistance_to_soma(other_type_comp, connect_dict, comp_dict) ;
-				#Ra_sum += R_path * other_type_reduced_connect_comp.Ra ;
-				#mrg_n_comp += R_path ;
 				Ra_sum += ddend_part_reduced_comp.Ra ;
 				mrg_n_comp += ddend_part_reduced_comp.mrg_n_comp ;
 				
@@ -522,7 +506,6 @@ function strahler(strahler_thrs ::Int64)
 				ddend_reduced_comp = reduced_comp_t(l_eq, d_eq, Ra_eq, n_comp, mrg_n_comp, reduced_area, 
 														full_area_sum, comp_id, reduced_comp_v[idx[1]].id, :ddend) ;
 			end
-			#push!(reduced_comp_v, ddend_reduced_comp) ;
 		end
 		
 		
@@ -532,20 +515,7 @@ function strahler(strahler_thrs ::Int64)
 
 		pdend_l = joint_reduced_comp.l - ddend_l ;
 		pdend_Ra = joint_reduced_comp.Ra - ddend_Ra ;
-		#=
-		push!(reduced_comp_v, reduced_comp_t(pdend_l, joint_reduced_comp.d,
-											pdend_Ra, pdend_reduced_comp.n_comp,
-											1.0, pdend_reduced_comp.area, 
-											0.5*pdend_reduced_comp.full_area_sum, pdend_reduced_comp.id, 
-											pdend_reduced_comp.connect_to, :pdend)) ;
 
-		push!(reduced_comp_v, reduced_comp_t(ddend_l, joint_reduced_comp.d,
-											ddend_Ra, ddend_reduced_comp.n_comp,
-											1.0, ddend_reduced_comp.area,
-											0.5*ddend_reduced_comp.full_area_sum, ddend_reduced_comp.id, 
-											ddend_reduced_comp.connect_to, :ddend)) ;
-		=#
-		
 		push!(reduced_comp_v, reduced_comp_t(pdend_reduced_comp.l, joint_reduced_comp.d,
 											pdend_reduced_comp.Ra/pdend_reduced_comp.mrg_n_comp, 
 											pdend_reduced_comp.n_comp,
@@ -559,11 +529,6 @@ function strahler(strahler_thrs ::Int64)
 											1.0, ddend_reduced_comp.area ,
 											0.5*ddend_reduced_comp.full_area_sum, ddend_reduced_comp.id, 
 											ddend_reduced_comp.connect_to, :ddend)) ;
-		
-		#println(joint_reduced_comp.full_area_sum)
-		#println(pdend_reduced_comp.full_area_sum + ddend_reduced_comp.full_area_sum)
-		#println("-------------------------")
-		
 	end
 
 
@@ -577,39 +542,7 @@ function strahler(strahler_thrs ::Int64)
 	println("actual number of dendritic compartments: ", size(pdend,1) + size(ddend,1))
 	println("reduced model compartments: ",length(reduced_comp_v))
 	
-	
-	p1 = 0 ;
-	p2 = 0 ; 
-	p3 = 0 ;
-	d1 = 0 ;
-	d2 = 0 ;
-	d3 = 0 ;
-	for c in keys(comp_dict)
-		if comp_dict[c].ctype == :pdend
-			if strahler_dict[c] == 1
-				p1 += 1 ;
-			elseif strahler_dict[c] == 2
-				p2 += 1 ;
-			elseif strahler_dict[c] == 3
-				p3 +=1 ;
-			end
-		elseif comp_dict[c].ctype == :ddend
-			if strahler_dict[c] == 1
-				d1 += 1 ;
-			elseif strahler_dict[c] == 2
-				d2 += 1 ;
-			elseif strahler_dict[c] == 3
-				d3 +=1 ;
-			end
-		end
-	end
-
-	println(p1/size(pdend,1) *100, " ", d1/size(ddend,1)*100)
-	println(p2/size(pdend,1)*100, " ", d2/size(ddend,1)*100)
-	println(p3/size(pdend,1)*100, " ", d3/size(ddend,1)*100)
-	
 	return reduced_comp_v
-	
 end
 
 function full_model()
@@ -617,21 +550,19 @@ function full_model()
 
 	reduced_comp_v = Array{reduced_comp_t, 1}() ;
 
-	file = open("pdend2.txt", "r")
-	#file = open("pdend_tst.txt", "r")
+	file = open("./data/pDend.txt", "r")
 	pdend = readdlm(file) ;
 	close(file)
 
-	file = open("ddend2.txt", "r")
-	#file = open("ddend_tst.txt", "r")
+	file = open("./data/dDend.txt", "r")
 	ddend = readdlm(file) ;
 	close(file)
 
-	file = open("axis.txt", "r")
+	file = open("./data/axIS.txt", "r")
 	axis = readdlm(file) ;
 	close(file)
 
-	file = open("axin.txt", "r")
+	file = open("./data/axIN.txt", "r")
 	axin = readdlm(file) ;
 	close(file)
 	
@@ -725,7 +656,7 @@ function full_model()
 
 
 	for comp in keys(comp_dict)
-		if comp != "soma" #&& comp_dict[comp].ctype == :pdend
+		if comp != "soma" 
 		l_current_comp = sqrt((comp_dict[comp].x - comp_dict[connect_dict[comp]].x)^2 +
 					  (comp_dict[comp].y - comp_dict[connect_dict[comp]].y)^2 +
 					  (comp_dict[comp].z - comp_dict[connect_dict[comp]].z)^2 ) ;
@@ -735,6 +666,6 @@ function full_model()
 											pi * l_current_comp * comp_dict[comp].d, comp, connect_dict[comp], comp_dict[comp].ctype)) ;
 		end
 	end
-	println(length(reduced_comp_v))
+	
 	return reduced_comp_v
 end

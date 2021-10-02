@@ -1,5 +1,3 @@
-using StaticArrays
-
 
 abstract type abstract_comp end
 

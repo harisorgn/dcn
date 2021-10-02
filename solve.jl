@@ -1,9 +1,4 @@
 
-using DifferentialEquations 
-using DiffEqCallbacks
-using ODEInterface 	
-using BenchmarkTools
-
 function model_dynamics(du, u, p, t)
 
 	idx_stride = 1 ;
@@ -59,20 +54,6 @@ function pulse_end!(integrator)
 	integrator.u[end] = 0.0 ;
 end
 
-function fig2(comp::soma_t, u::Array{Float64}, V_connect::Array{Float64})
-
-	currents = [ g_fKdr_s * u[7]^4 * (u[1] - E_K) * comp.area + g_sKdr_s * u[8]^4 * (u[1] - E_K) * comp.area,
-				 g_Sk_s * u[12] * (u[1] - E_K) * comp.area,
-				 p_CaHVA_s * u[9]^3 * z_CaHVA^2 * F^2 * u[1] * (u[13] - Ca_out * exp(-z_CaHVA * F * u[1] / (R * Temp))) / 
-					(R * Temp * (1.0 - exp(-z_CaHVA * F * u[1] / (R * Temp)))) * comp.area,
-				g_Naf_s * u[2]^3 * u[3] * (u[1] - E_Na) * comp.area + g_Nap_s * u[4]^3 * u[5] * (u[1] - E_Na) * comp.area,
-				-1.0/(comp.Ra_connect_v[1] + comp.Ra_connect_v[end]) * (u[1] - V_connect[1]),
-				g_TNC_s * (u[1] - E_TNC) * comp.area,
-				g_fKdr_s * u[7]^4 * (u[1] - E_K) * comp.area + g_sKdr_s * u[8]^4 * (u[1] - E_K) * comp.area - 1.0/(comp.Ra_connect_v[1] + comp.Ra_connect_v[end]) * (u[1] - V_connect[1])] ;
-
-	return currents
-end
-
 function model_solve(V0::Float64, Ca0::Float64, comp_v::Array{abstract_comp})
 
 	sum_eq = 0 ;
@@ -110,24 +91,5 @@ function model_solve(V0::Float64, Ca0::Float64, comp_v::Array{abstract_comp})
 	#writedlm(file, Float32([sol.t sol[:,:]']))
 	writedlm(file, [sol.t sol[1,:]])
 	close(file)
-
-	soma_currents = Array{Float64}(length(sol.t), 11) ;
-	fig2_currents = Array{Float64}(length(sol.t), 7) ;
-	for i = 1 : length(sol.t)
-
-		#soma_currents[i, :] = compartment_currents(comp_v[1], sol[1:13, i], sol[comp_v[1].V_connect_idx, i]) ;
-		#fig2_currents[i, :] = fig2(comp_v[1], sol[1:13, i], sol[comp_v[1].V_connect_idx, i]) ;
-
-	end
-
-	file = open("soma_cur.txt", "w+")
-	writedlm(file, [sol.t soma_currents])
-	close(file)
-
-	file = open("fig2_cur.txt", "w+")
-	writedlm(file, [sol.t fig2_currents])
-	close(file)
-
-	return
 end
 
