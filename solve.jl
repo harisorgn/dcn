@@ -91,5 +91,7 @@ function model_solve(V0::Float64, Ca0::Float64, comp_v::Array{abstract_comp})
 	#writedlm(file, Float32([sol.t sol[:,:]']))
 	writedlm(file, [sol.t sol[1,:]])
 	close(file)
+
+	return sol
 end
 

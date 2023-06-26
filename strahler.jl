@@ -304,26 +304,10 @@ function rec_reduced_comp(connect_dict::Dict{String, String}, comp_dict::Dict{St
 	end
 end
 
-function strahler(strahler_thrs ::Int64)
-
+function strahler(data; strahler_thrs = 3)
+	(pdend, ddend, axis, axin) = data
 
 	reduced_comp_v = Array{reduced_comp_t, 1}() ;
-
-	file = open("./data/pDend.txt", "r")
-	pdend = readdlm(file) ;
-	close(file)
-
-	file = open("./data/dDend.txt", "r")
-	ddend = readdlm(file) ;
-	close(file)
-
-	file = open("./data/axIS.txt", "r")
-	axis = readdlm(file) ;
-	close(file)
-
-	file = open("./data/axIN.txt", "r")
-	axin = readdlm(file) ;
-	close(file)
 
 	strahler_dict = Dict{String, Int64}() ;
 	sizehint!(strahler_dict, size(pdend,1) + size(ddend,1) + 1) ;
@@ -545,26 +529,10 @@ function strahler(strahler_thrs ::Int64)
 	return reduced_comp_v
 end
 
-function full_model()
-
+function full_model(data)
+	(pdend, ddend, axis, axin) = data
 
 	reduced_comp_v = Array{reduced_comp_t, 1}() ;
-
-	file = open("./data/pDend.txt", "r")
-	pdend = readdlm(file) ;
-	close(file)
-
-	file = open("./data/dDend.txt", "r")
-	ddend = readdlm(file) ;
-	close(file)
-
-	file = open("./data/axIS.txt", "r")
-	axis = readdlm(file) ;
-	close(file)
-
-	file = open("./data/axIN.txt", "r")
-	axin = readdlm(file) ;
-	close(file)
 	
 	strahler_dict = Dict{String, Int64}() ;
 	sizehint!(strahler_dict, size(pdend,1) + size(ddend,1) + 1) ;

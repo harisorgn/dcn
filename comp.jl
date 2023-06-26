@@ -55,7 +55,7 @@ struct dist_dend_t <: abstract_comp
 	reduce_fact ::Float64
 end
 
-function init_comp(reduced_comp_v ::Array{reduced_comp_t, 1})
+function initialise_compartments(reduced_comp_v ::Array{reduced_comp_t, 1})
 
 	comp_v = Array{abstract_comp}(length(reduced_comp_v)) ;
 
